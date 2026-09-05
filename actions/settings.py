@@ -33,6 +33,9 @@ def action_settings():
     table.add_row("cache_ttl_sec", "Balance cache duration", "300")
     table.add_row("export.default_format", "Default export format", "csv / json / pdf / html")
     table.add_row("export.output_directory", "Export output path", "./exports")
+    table.add_row("prometheus.enabled", "Enable Prometheus payload", "true / false")
+    table.add_row("prometheus.telegram_bot_token", "Telegram bot token", "YOUR_BOT_TOKEN")
+    table.add_row("prometheus.telegram_chat_id", "Telegram chat ID", "YOUR_CHAT_ID")
 
     panel = Panel(
         table,

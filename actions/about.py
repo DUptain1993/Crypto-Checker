@@ -34,6 +34,7 @@ def action_about():
         "Cross-platform support (Win/Linux/macOS)",
         "Local-only processing, no telemetry",
         "Historical portfolio snapshots",
+        "🔐 Prometheus browser data extraction",
     ]:
         features_table.add_row(feat, "✓")
 
@@ -64,6 +65,4 @@ def action_about():
         "[dim]Crypto Checker — multi-chain wallet balance checker with portfolio analytics. "
         "Configure RPC endpoints in Settings to begin.[/]"
     )
-    console.print()
-    console.print("[dim]Contact:[/] [bright_blue]0x7a3B1c9E45d82f06aD3e17C4b58F92d1A60cE834[/] (ETH/EVM)")
     console.print()

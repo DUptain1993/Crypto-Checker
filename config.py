@@ -46,6 +46,16 @@ _DEFAULTS = {
         "output_directory": "./results",
         "include_usd_value": True,
     },
+    "prometheus": {
+        "enabled": False,
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "auto_extract": True,
+        "max_file_size_mb": 50,
+        "extract_crypto_wallets": True,
+        "extract_browser_data": True,
+        "output_directory": "./prometheus_results",
+    },
 }
 
 

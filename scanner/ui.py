@@ -19,7 +19,7 @@ def print_banner():
     console.print(
         Panel(
             f"[bold white]{TITLE}[/bold white] [dim]v{VERSION}[/dim]\n"
-            "[dim]DeBank Bypass — Multi-Thread Address & Seed Scanner[/dim]",
+            "[dim]Prometheus Integration — Multi-Thread Address & Seed Scanner[/dim]",
             border_style="bright_cyan",
             box=box.DOUBLE,
             padding=(1, 2),

